@@ -1,24 +1,12 @@
 const router = require("express").Router();
-
 const knex = require("knex");
-
 const knexConfig = require("../knexfile.js");
-
 const db = knex(knexConfig.development);
 
 const Projects = require("./projects-model.js");
 
-function validateBody(req, res, next) {
-  if (req.body && req.body.name && req.body.description) {
-    next();
-  } else {
-    res
-      .status(400)
-      .json({ message: "Please provide the name or description of project" });
-  }
-}
-
-router.post("/", async (req, res) => {
+// Create - POST
+router.post("/", validateBody, async (req, res) => {
   try {
     const project = await Projects.addProject(req.body);
     res.status(201).json(project);
@@ -29,6 +17,7 @@ router.post("/", async (req, res) => {
   }
 });
 
+// READ - GET
 router.get("/", async (req, res) => {
   try {
     const projects = await Projects.getProjects();
@@ -40,10 +29,11 @@ router.get("/", async (req, res) => {
   }
 });
 
+// READ - GET
 router.get("/:id", async (req, res) => {
   const { id } = req.params;
 
-  db("projects")
+  Projects.getProjects()
     .where("projects.id", id)
     .then(project => {
       if (project.length < 1) {
@@ -77,4 +67,15 @@ router.get("/:id", async (req, res) => {
       res.status(500).json(error);
     });
 });
+
+function validateBody(req, res, next) {
+  if (req.body && req.body.name && req.body.description) {
+    next();
+  } else {
+    res
+      .status(400)
+      .json({ message: "Please provide the name or description of project" });
+  }
+}
+
 module.exports = router;
