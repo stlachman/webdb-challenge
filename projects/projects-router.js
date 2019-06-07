@@ -1,25 +1,26 @@
 const router = require("express").Router();
 
-const Projects = require("./projects-model.js");
+const knex = require("knex");
 
-// router.post("/", (req, res) => {
-//   const newProject = req.body;
-//   Projects.addProject(newProject);
-// });
+const knexConfig = require("../knexfile.js");
+
+const db = knex(knexConfig.development);
+
+const Projects = require("./projects-model.js");
 
 function validateBody(req, res, next) {
   if (req.body && req.body.name && req.body.description) {
     next();
   } else {
-    res.status(400).json({ message: "Please provide the name of the hub" });
+    res
+      .status(400)
+      .json({ message: "Please provide the name or description of project" });
   }
 }
 
 router.post("/", async (req, res) => {
   try {
-    // validate body to make sure there is a name
     const project = await Projects.addProject(req.body);
-    console.log(project);
     res.status(201).json(project);
   } catch (error) {
     res.status(500).json({
@@ -40,28 +41,40 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const projects = await Projects.getProjects().where({ id });
-    const actions = await Projects.getActions().where({ project_id: id });
+  const { id } = req.params;
 
-    let result = {
-      if(actions && actions.length > 0) {
-        projects.actions = actions;
-
-        return projects;
+  db("projects")
+    .where("projects.id", id)
+    .then(project => {
+      if (project.length < 1) {
+        res.status(404).json({
+          message: `The project with the specified id: '${id}' does not exist.`
+        });
+      } else {
+        db("actions")
+          .select("id", "description", "notes", "completed")
+          .where("project_id", id)
+          .then(projectActions => {
+            project = project[0];
+            if (project.completed === 1) {
+              project.completed = true;
+            } else {
+              project.completed = false;
+            }
+            projectActions.map(projectAction => {
+              if (projectAction.completed === 1) {
+                projectAction.completed = true;
+              } else {
+                projectAction.completed = false;
+              }
+            });
+            project.actions = projectActions;
+            res.status(200).json(project);
+          });
       }
-      // projects,
-      // ...actions
-    };
-    res.status(200).json(result);
-  } catch (error) {
-    // log error to server
-    console.log(error);
-    res.status(500).json({
-      message: "Error retrieving projects"
+    })
+    .catch(error => {
+      res.status(500).json(error);
     });
-  }
 });
-
 module.exports = router;

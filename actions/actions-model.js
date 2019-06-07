@@ -5,7 +5,8 @@ const knexConfig = require("../knexfile.js");
 const db = knex(knexConfig.development);
 
 module.exports = {
-  getActions
+  getActions,
+  addAction
 };
 
 function getActions() {
@@ -13,10 +14,14 @@ function getActions() {
     .join("actions as a", "p.id", "a.project_id")
     .select(
       "a.id",
-      "a.description as description",
+      "a.description",
       "a.completed as completed",
       "a.notes as notes",
       "p.name as name",
       "p.description as description"
     );
+}
+
+function addAction(action) {
+  return db("actions").insert(action, "id");
 }
